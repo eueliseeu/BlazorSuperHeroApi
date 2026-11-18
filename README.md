@@ -1,26 +1,56 @@
 # HeroVerse
 
-Aplicação Blazor WebAssembly com uma API ASP.NET Core responsável por consultar a SuperHeroAPI. O navegador acessa somente o backend local; o token da SuperHeroAPI permanece na configuração do servidor.
+Aplicação Blazor WebAssembly para pesquisar personagens da SuperHeroAPI e consultar suas biografias, poderes, aparência e conexões.
 
-## Configuração local
+## Recursos
 
-Revogue o token que foi compartilhado na conversa e gere um novo. Configure-o com User Secrets no projeto servidor:
+- Busca de personagens por nome.
+- Resultados em tabela com ficha de detalhes expansível.
+- Exibição de biografia, aparência, habilidades e conexões.
+- Integração com a SuperHeroAPI pelo backend, mantendo o token fora do navegador.
+- Proxy local para imagens de personagens, com avatar alternativo quando uma imagem não está disponível.
+
+## Arquitetura
+
+| Projeto | Responsabilidade |
+| --- | --- |
+| `BlazorSuperHeroApi` | Interface Blazor WebAssembly |
+| `BlazorSuperHeroApi.Application` | Contratos e modelos da aplicação |
+| `BlazorSuperHeroApi.Infrastructure` | Integrações HTTP com serviços externos |
+| `BlazorSuperHeroApi.Server` | API ASP.NET Core e hospedagem da aplicação |
+
+## Requisitos
+
+- .NET 10 SDK
+- Token ativo da SuperHeroAPI
+
+## Executar localmente
+
+Configure o token usando User Secrets:
 
 ```powershell
-dotnet user-secrets set "SuperHeroApi:AccessToken" "<NOVO_TOKEN>" --project .\BlazorSuperHeroApi.Server\BlazorSuperHeroApi.Server.csproj
+dotnet user-secrets set "SuperHeroApi:AccessToken" "<seu-token>" --project .\BlazorSuperHeroApi.Server\BlazorSuperHeroApi.Server.csproj
+```
+
+Inicie o servidor:
+
+```powershell
 dotnet run --project .\BlazorSuperHeroApi.Server\BlazorSuperHeroApi.Server.csproj
 ```
 
-Abra `https://localhost:7183`. O endpoint `GET /api/heroes/search?name=batman` pesquisa personagens e retorna seus dados de biografia, aparência, poderes, trabalho, conexões e imagem.
+Abra `https://localhost:7183`.
+
+## Endpoints locais
+
+| Método | Endpoint | Descrição |
+| --- | --- | --- |
+| `GET` | `/api/heroes/search?name=batman` | Pesquisa personagens pelo nome |
+| `GET` | `/api/heroes/image?url={url-codificada}` | Busca uma imagem de retrato permitida pelo servidor |
+
 O servidor consulta a SuperHeroAPI no formato `https://superheroapi.com/api/{token}/search/{nome}`.
 
-Se a busca retornar que a SuperHeroAPI recusou o token, confirme que o token ativo está salvo nos User Secrets do projeto `BlazorSuperHeroApi.Server`. A credencial não deve ser adicionada ao projeto WebAssembly.
+## Configuração em produção
 
-Em ambientes publicados, configure `SuperHeroApi__AccessToken` como variável de ambiente do servidor. Não adicione tokens ao projeto WebAssembly, ao repositório ou a arquivos servidos ao navegador.
+Defina `SuperHeroApi__AccessToken` como variável de ambiente no servidor. Não coloque o token em arquivos públicos, no projeto WebAssembly ou no repositório.
 
-## Projetos
-
-- `BlazorSuperHeroApi.Application`: contratos de busca e modelos de domínio.
-- `BlazorSuperHeroApi.Infrastructure`: integração HTTP com a SuperHeroAPI e registro de dependências.
-- `BlazorSuperHeroApi.Server`: endpoint backend, validação de configuração e hospedagem da aplicação WebAssembly.
-- `BlazorSuperHeroApi`: interface Blazor WebAssembly.
+O carregamento das imagens depende de o servidor conseguir acessar `www.superherodb.com`. Redes institucionais ou restrições do provedor podem bloquear esse acesso; nesses casos, a aplicação exibe o avatar alternativo.
