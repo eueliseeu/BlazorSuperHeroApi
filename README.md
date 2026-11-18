@@ -8,7 +8,7 @@ Aplicação Blazor WebAssembly para pesquisar personagens da SuperHeroAPI e cons
 - Resultados em tabela com ficha de detalhes expansível.
 - Exibição de biografia, aparência, habilidades e conexões.
 - Integração com a SuperHeroAPI pelo backend, mantendo o token fora do navegador.
-- Proxy local para imagens de personagens, com avatar alternativo quando uma imagem não está disponível.
+- Imagens de personagens servidas pelo catálogo Akabab via jsDelivr, com avatar alternativo quando uma imagem não está disponível.
 
 ## Arquitetura
 
@@ -45,10 +45,11 @@ Abra `https://localhost:7183`.
 | Método | Endpoint | Descrição |
 | --- | --- | --- |
 | `GET` | `/api/heroes/search?name=batman` | Pesquisa personagens pelo nome |
-| `GET` | `/api/heroes/{id}/image` | Redireciona para a imagem do herói no CDN (espelho akabab/superhero-api via jsDelivr) |
-| `GET` | `/api/heroes/image?url={url-codificada}` | (Legado) Busca uma imagem do superherodb.com pelo servidor; pode ser bloqueada pela Cloudflare |
+| `GET` | `/api/heroes/{id}/image` | Redireciona para a imagem do herói no CDN jsDelivr |
 
 O servidor consulta a SuperHeroAPI no formato `https://superheroapi.com/api/{token}/search/{nome}`.
+
+O catálogo Akabab fornece o endereço de imagem por ID. O servidor valida e armazena esse endereço em cache por sete dias; a imagem continua hospedada no CDN. Consulte o [repositório e os termos da fonte](https://github.com/akabab/superhero-api) antes de usar em produção.
 
 ## Configuração em produção
 

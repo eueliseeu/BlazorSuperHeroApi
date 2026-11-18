@@ -335,19 +335,12 @@ else if (hasSearched && heroes.Count == 0)
 
     private string? DisplayImageUrl(HeroProfile hero)
     {
-        if (failedImageHeroes.Contains(hero))
+        if (failedImageHeroes.Contains(hero) || string.IsNullOrWhiteSpace(hero.Id))
         {
             return null;
         }
 
-        var imageUrl = hero.Image?.Url?.Replace("\\/", "/", StringComparison.Ordinal).Trim();
-        if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri)
-            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-        {
-            return null;
-        }
-
-        return $"api/heroes/image?url={Uri.EscapeDataString(uri.AbsoluteUri)}";
+        return $"api/heroes/{Uri.EscapeDataString(hero.Id)}/image";
     }
 
     private void HandleImageError(HeroProfile hero) =>

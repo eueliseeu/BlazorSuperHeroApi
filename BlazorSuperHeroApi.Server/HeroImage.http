@@ -1,5 +1,4 @@
 @baseUrl = https://localhost:7183
-@imageUrl = https%3A%2F%2Fwww.superherodb.com%2Fpictures2%2Fportraits%2F10%2F100%2F10441.jpg
 
-### Retrieve a character portrait through the same-origin proxy
-GET {{baseUrl}}/api/heroes/image?url={{imageUrl}}
+### Redirect to Batman's image in the public image catalog
+GET {{baseUrl}}/api/heroes/70/image

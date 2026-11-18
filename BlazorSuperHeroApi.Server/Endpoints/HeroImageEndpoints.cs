@@ -1,3 +1,4 @@
+using System.Text.Json;
 using BlazorSuperHeroApi.Application.Heroes;
 
 namespace BlazorSuperHeroApi.Server.Endpoints;
@@ -6,51 +7,36 @@ public static class HeroImageEndpoints
 {
     public static IEndpointRouteBuilder MapHeroImageEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/api/heroes/image", GetImageAsync)
-            .WithName("GetHeroImage")
-            .WithSummary("Retrieves a SuperHeroDB character image through the application server.")
-            .WithDescription("Only portrait images hosted on www.superherodb.com are supported.")
-            .Produces(StatusCodes.Status200OK, contentType: "image/jpeg")
-            .Produces(StatusCodes.Status200OK, contentType: "image/png")
-            .Produces(StatusCodes.Status200OK, contentType: "image/gif")
-            .Produces(StatusCodes.Status200OK, contentType: "image/webp")
-            .ProducesProblem(StatusCodes.Status400BadRequest)
+        endpoints.MapGet("/api/heroes/{id}/image", GetImageUrlAsync)
+            .WithName("GetHeroImageUrl")
+            .WithSummary("Redirects to a character image in the Akabab image catalog.")
+            .WithDescription("Returns a redirect to the pinned jsDelivr image for the character ID.")
+            .Produces(StatusCodes.Status302Found)
             .Produces(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status502BadGateway);
 
         return endpoints;
     }
 
-    private static async Task<IResult> GetImageAsync(
-        string? url,
-        IHeroImageProxy imageProxy,
+    private static async Task<IResult> GetImageUrlAsync(
+        string id,
+        IHeroImageCatalog imageCatalog,
         HttpContext httpContext,
         ILoggerFactory loggerFactory,
         CancellationToken cancellationToken)
     {
         var logger = loggerFactory.CreateLogger(nameof(HeroImageEndpoints));
 
-        if (string.IsNullOrWhiteSpace(url) || !imageProxy.IsAllowedSource(url))
-        {
-            return Results.Problem(
-                title: "URL de imagem inválida.",
-                detail: "Informe uma imagem de personagem hospedada na SuperHeroDB.",
-                statusCode: StatusCodes.Status400BadRequest);
-        }
-
         try
         {
-            var image = await imageProxy.FetchAsync(url, cancellationToken);
-            if (image is null)
+            var imageUrl = await imageCatalog.GetImageUrlAsync(id, cancellationToken);
+            if (imageUrl is null)
             {
                 return Results.NotFound();
             }
 
             httpContext.Response.Headers["Cache-Control"] = "public, max-age=86400";
-            httpContext.Response.Headers["Cross-Origin-Resource-Policy"] = "same-origin";
-            httpContext.Response.Headers["X-Content-Type-Options"] = "nosniff";
-
-            return Results.File(image.Content, image.ContentType);
+            return Results.Redirect(imageUrl);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -59,7 +45,8 @@ public static class HeroImageEndpoints
         catch (TaskCanceledException exception)
         {
             logger.LogWarning(
-                "Hero image request timed out with {ExceptionType}.",
+                "Hero image catalog request timed out for hero {HeroId} with {ExceptionType}.",
+                id,
                 exception.GetType().Name);
 
             return Results.Problem(
@@ -67,10 +54,11 @@ public static class HeroImageEndpoints
                 detail: "Não foi possível carregar a imagem do personagem.",
                 statusCode: StatusCodes.Status502BadGateway);
         }
-        catch (Exception exception) when (exception is HttpRequestException or IOException)
+        catch (Exception exception) when (exception is HttpRequestException or IOException or JsonException)
         {
             logger.LogWarning(
-                "Hero image request failed with status {StatusCode} and {ExceptionType}.",
+                "Hero image catalog request failed for hero {HeroId} with status {StatusCode} and {ExceptionType}.",
+                id,
                 (exception as HttpRequestException)?.StatusCode,
                 exception.GetType().Name);
 

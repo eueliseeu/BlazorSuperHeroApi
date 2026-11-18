@@ -29,14 +29,12 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(20);
         });
 
-        services.AddHttpClient<IHeroImageProxy, SuperHeroImageProxy>(client =>
+        services.AddMemoryCache();
+        services.AddHttpClient<IHeroImageCatalog, AkababHeroImageCatalog>(client =>
         {
-            client.BaseAddress = new Uri("https://www.superherodb.com/");
-            client.Timeout = TimeSpan.FromSeconds(15);
-        })
-        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-        {
-            AllowAutoRedirect = false
+            client.BaseAddress = new Uri(
+                "https://cdn.jsdelivr.net/gh/akabab/superhero-api@0.3.0/api/");
+            client.Timeout = TimeSpan.FromSeconds(10);
         });
 
         return services;
