@@ -1,0 +1,398 @@
+﻿@page "/"
+@inject HttpClient Http
+
+<PageTitle>HeroVerse — personagens e universos</PageTitle>
+
+<section class="home-hero" id="buscar">
+    <div class="home-hero__content">
+    
+
+        <h1>Todo universo tem<br />um herói para descobrir.</h1>
+        <p class="home-hero__description">
+            Encontre personagens, conheça suas habilidades e descubra as histórias por trás de cada nome.
+        </p>
+
+        <form class="search-form" @onsubmit="SearchAsync" @onsubmit:preventDefault>
+            <label class="visually-hidden" for="hero-name">Nome do herói</label>
+            <input id="hero-name"
+                   class="search-form__input"
+                   type="search"
+                   placeholder="Digite o nome de um personagem"
+                   autocomplete="off"
+                   @bind="searchTerm"
+                   @bind:event="oninput" />
+            <button class="search-form__button" type="submit" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="search-form__spinner" aria-hidden="true"></span>
+                    <span>Buscando</span>
+                }
+                else
+                {
+                    <span>Buscar heróis</span>
+                }
+            </button>
+        </form>
+
+        <div class="home-hero__links">
+            <a href="https://superheroapi.com/" target="_blank" rel="noreferrer">
+                Conheça a fonte dos dados <span aria-hidden="true">↗</span>
+            </a>
+        </div>
+        </div>
+</section>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="feedback feedback--error" role="alert">@errorMessage</div>
+}
+else if (isLoading)
+{
+    <div class="feedback" role="status">Consultando o universo de heróis...</div>
+}
+else if (hasSearched && heroes.Count == 0)
+{
+    <div class="feedback">Nenhum herói encontrado para “@lastSearch”. Tente outro nome.</div>
+}
+@if (heroes.Count > 0)
+{
+    <section class="results" id="resultados" aria-live="polite">
+        <div class="results__heading">
+            <div>
+                <p class="eyebrow">RESULTADOS DA BUSCA</p>
+                <h2>@heroes.Count @(heroes.Count == 1 ? "personagem encontrado" : "personagens encontrados")</h2>
+            </div>
+            <span class="results__query">Busca por <strong>@lastSearch</strong></span>
+        </div>
+
+        <div class="hero-table-shell">
+            <div class="hero-table-scroll">
+                <table class="hero-table">
+                    <caption class="visually-hidden">Resultados encontrados na SuperHeroAPI</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Personagem</th>
+                            <th scope="col">Alinhamento</th>
+                            <th scope="col">Editora</th>
+                            <th scope="col">Força</th>
+                            <th scope="col"><span class="visually-hidden">Detalhes</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var hero in heroes)
+                        {
+                            var isExpanded = IsExpanded(hero);
+                            <tr class="hero-table__row @(isExpanded ? "hero-table__row--expanded" : null)"
+                                @key="hero.Id"
+                                @onclick="() => ToggleHero(hero)">
+                                <td>
+                                    <div class="hero-table__person">
+                                        @if (DisplayImageUrl(hero) is { } avatarUrl)
+                                        {
+                                            <img class="hero-table__avatar"
+                                                 src="@avatarUrl"
+                                                 alt=""
+                                                 loading="lazy"
+                                                 decoding="async"
+                                                 @onerror="() => HandleImageError(hero)" />
+                                        }
+                                        else
+                                        {
+                                            <span class="hero-table__avatar hero-table__avatar--fallback" aria-hidden="true">
+                                                @Initial(hero.Name)
+                                            </span>
+                                        }
+                                        <span class="hero-table__identity">
+                                            <strong>@DisplayValue(hero.Name)</strong>
+                                            <span>@DisplayValue(hero.Biography?.FullName)</span>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="@AlignmentClass(hero.Biography?.Alignment)">
+                                        <span class="hero-alignment__dot"></span>
+                                        @AlignmentLabel(hero.Biography?.Alignment)
+                                    </span>
+                                </td>
+                                <td class="hero-table__publisher">@DisplayValue(hero.Biography?.Publisher)</td>
+                                <td>
+                                    <div class="hero-table__strength">
+                                        <span>@DisplayValue(hero.Powerstats?.Strength)</span>
+                                        <span class="hero-table__meter">
+                                            <span style="@StatWidth(hero.Powerstats?.Strength)"></span>
+                                        </span>
+                                    </div>
+                                </td>
+                                <td class="hero-table__action">
+                                    <button class="hero-table__toggle"
+                                            type="button"
+                                            aria-expanded="@isExpanded"
+                                            aria-controls="@($"hero-details-{hero.Id}")"
+                                            aria-label="@(isExpanded ? $"Fechar detalhes de {hero.Name}" : $"Abrir detalhes de {hero.Name}")"
+                                            @onclick="() => ToggleHero(hero)"
+                                            @onclick:stopPropagation="true">
+                                        <span>@(isExpanded ? "Fechar" : "Detalhes")</span>
+                                        <span class="hero-table__chevron" aria-hidden="true"></span>
+                                    </button>
+                                </td>
+                            </tr>
+                            @if (isExpanded)
+                            {
+                                <tr class="hero-table__detail-row">
+                                    <td colspan="5">
+                                        <section class="hero-detail"
+                                                 id="@($"hero-details-{hero.Id}")"
+                                                 aria-label="@($"Ficha de {hero.Name}")">
+                                            <div class="hero-detail__header">
+                                                <div>
+                                                    <p class="eyebrow">FICHA DO PERSONAGEM</p>
+                                                    <h3>@DisplayValue(hero.Name)</h3>
+                                                    <p>@DisplayValue(hero.Biography?.FullName)</p>
+                                                </div>
+                                                <div class="hero-detail__portrait">
+                                                    @if (DisplayImageUrl(hero) is { } portraitUrl)
+                                                    {
+                                                        <img src="@portraitUrl"
+                                                             alt=""
+                                                             loading="lazy"
+                                                             decoding="async"
+                                                             @onerror="() => HandleImageError(hero)" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="hero-detail__portrait-fallback" aria-hidden="true">
+                                                            @Initial(hero.Name)
+                                                        </span>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <div class="hero-detail__grid">
+                                                <section class="hero-detail__section">
+                                                    <h4>Biografia</h4>
+                                                    <dl class="hero-detail__list">
+                                                        <div><dt>Também conhecido como</dt><dd>@DisplayItems(hero.Biography?.Aliases)</dd></div>
+                                                        <div><dt>Local de nascimento</dt><dd>@DisplayValue(hero.Biography?.PlaceOfBirth)</dd></div>
+                                                        <div><dt>Primeira aparição</dt><dd>@DisplayValue(hero.Biography?.FirstAppearance)</dd></div>
+                                                        <div><dt>Alinhamento</dt><dd>@AlignmentLabel(hero.Biography?.Alignment)</dd></div>
+                                                    </dl>
+                                                </section>
+
+                                                <section class="hero-detail__section">
+                                                    <h4>Aparência</h4>
+                                                    <dl class="hero-detail__list">
+                                                        <div><dt>Gênero</dt><dd>@DisplayValue(hero.Appearance?.Gender)</dd></div>
+                                                        <div><dt>Raça</dt><dd>@DisplayValue(hero.Appearance?.Race)</dd></div>
+                                                        <div><dt>Altura</dt><dd>@DisplayItems(hero.Appearance?.Height)</dd></div>
+                                                        <div><dt>Peso</dt><dd>@DisplayItems(hero.Appearance?.Weight)</dd></div>
+                                                        <div><dt>Olhos</dt><dd>@DisplayValue(hero.Appearance?.EyeColor)</dd></div>
+                                                        <div><dt>Cabelo</dt><dd>@DisplayValue(hero.Appearance?.HairColor)</dd></div>
+                                                    </dl>
+                                                </section>
+
+                                                <section class="hero-detail__section hero-detail__section--stats">
+                                                    <h4>Habilidades</h4>
+                                                    <div class="hero-detail__stats">
+                                                        @StatRow("Inteligência", hero.Powerstats?.Intelligence)
+                                                        @StatRow("Força", hero.Powerstats?.Strength)
+                                                        @StatRow("Velocidade", hero.Powerstats?.Speed)
+                                                        @StatRow("Durabilidade", hero.Powerstats?.Durability)
+                                                        @StatRow("Poder", hero.Powerstats?.Power)
+                                                        @StatRow("Combate", hero.Powerstats?.Combat)
+                                                    </div>
+                                                </section>
+
+                                                <section class="hero-detail__section">
+                                                    <h4>Atuação e conexões</h4>
+                                                    <dl class="hero-detail__list">
+                                                        <div><dt>Ocupação</dt><dd>@DisplayValue(hero.Work?.Occupation)</dd></div>
+                                                        <div><dt>Base</dt><dd>@DisplayValue(hero.Work?.Base)</dd></div>
+                                                        <div><dt>Grupo</dt><dd>@DisplayValue(hero.Connections?.GroupAffiliation)</dd></div>
+                                                        <div><dt>Familiares</dt><dd>@DisplayValue(hero.Connections?.Relatives)</dd></div>
+                                                    </dl>
+                                                </section>
+                                            </div>
+                                        </section>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="hero-table__hint">Selecione <strong>Detalhes</strong> para expandir a ficha completa do personagem.</p>
+        </div>
+    </section>
+}
+
+<section class="home-features" id="universos">
+    <div class="home-features__heading">
+        <p class="eyebrow">SEU PRÓXIMO FAVORITO ESTÁ AQUI</p>
+        <h2>Mais do que nomes. Histórias completas.</h2>
+    </div>
+    <div class="home-features__grid">
+        <article class="home-feature">
+            <span class="home-feature__number">01</span>
+            <h3>Conheça os poderes</h3>
+            <p>Compare força, velocidade, inteligência e outras habilidades de cada personagem.</p>
+        </article>
+        <article class="home-feature">
+            <span class="home-feature__number">02</span>
+            <h3>Descubra a origem</h3>
+            <p>Veja biografia, primeira aparição, editora e detalhes de aparência em uma só ficha.</p>
+        </article>
+        <article class="home-feature">
+            <span class="home-feature__number">03</span>
+            <h3>Explore conexões</h3>
+            <p>Encontre equipes, aliados e relações que conectam personagens de diferentes universos.</p>
+        </article>
+    </div>
+</section>
+
+@code {
+    private string searchTerm = string.Empty;
+    private string lastSearch = string.Empty;
+    private IReadOnlyList<HeroProfile> heroes = Array.Empty<HeroProfile>();
+    private HeroProfile? expandedHero;
+    private readonly HashSet<HeroProfile> failedImageHeroes = [];
+    private bool isLoading;
+    private bool hasSearched;
+    private string? errorMessage;
+
+    private async Task SearchAsync()
+    {
+        var query = searchTerm.Trim();
+        if (string.IsNullOrWhiteSpace(query) || isLoading)
+        {
+            return;
+        }
+
+        isLoading = true;
+        hasSearched = false;
+        errorMessage = null;
+        heroes = Array.Empty<HeroProfile>();
+        expandedHero = null;
+        failedImageHeroes.Clear();
+        lastSearch = query;
+
+        try
+        {
+            using var response = await Http.GetAsync(
+                $"api/heroes/search?name={Uri.EscapeDataString(query)}");
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var problem = await response.Content.ReadFromJsonAsync<ApiProblemDetails>();
+                errorMessage = problem?.Detail
+                    ?? "Não foi possível consultar o serviço de heróis. Tente novamente.";
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<List<HeroProfile>>();
+            if (result is null)
+            {
+                errorMessage = "O serviço retornou uma resposta vazia. Tente novamente.";
+                return;
+            }
+
+            heroes = result;
+            hasSearched = true;
+        }
+        catch (HttpRequestException)
+        {
+            errorMessage = "Não foi possível conectar ao serviço de heróis. Tente novamente.";
+        }
+        catch (TaskCanceledException)
+        {
+            errorMessage = "A consulta excedeu o tempo limite. Tente novamente.";
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            errorMessage = "O serviço retornou dados em um formato inesperado.";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string DisplayValue(string? value) =>
+        string.IsNullOrWhiteSpace(value) || value.Equals("null", StringComparison.OrdinalIgnoreCase)
+            ? "Não informado"
+            : value;
+
+    private static string DisplayItems(IEnumerable<string>? values)
+    {
+        var items = values?
+            .Where(value => !string.IsNullOrWhiteSpace(value) && !value.Equals("null", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        return items is { Length: > 0 } ? string.Join(", ", items) : "Não informado";
+    }
+
+    private static string Initial(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "?" : value[..1].ToUpperInvariant();
+
+    private string? DisplayImageUrl(HeroProfile hero)
+    {
+        if (failedImageHeroes.Contains(hero))
+        {
+            return null;
+        }
+
+        var imageUrl = hero.Image?.Url?.Replace("\\/", "/", StringComparison.Ordinal).Trim();
+        if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            return null;
+        }
+
+        return $"api/heroes/image?url={Uri.EscapeDataString(uri.AbsoluteUri)}";
+    }
+
+    private void HandleImageError(HeroProfile hero) =>
+        failedImageHeroes.Add(hero);
+
+    private static string StatWidth(string? value) =>
+        int.TryParse(value, out var score)
+            ? $"width: {Math.Clamp(score, 0, 100)}%"
+            : "width: 0%";
+
+    private static string AlignmentLabel(string? alignment) =>
+        alignment?.Trim().ToLowerInvariant() switch
+        {
+            "good" => "Herói",
+            "bad" => "Vilão",
+            "neutral" => "Neutro",
+            _ => "Não informado"
+        };
+
+    private static string AlignmentClass(string? alignment) =>
+        alignment?.Trim().ToLowerInvariant() switch
+        {
+            "good" => "hero-alignment hero-alignment--good",
+            "bad" => "hero-alignment hero-alignment--bad",
+            "neutral" => "hero-alignment hero-alignment--neutral",
+            _ => "hero-alignment"
+        };
+
+    private RenderFragment StatRow(string label, string? value) => @<div class="hero-stat">
+        <div class="hero-stat__label">
+            <span>@label</span>
+            <strong>@DisplayValue(value)</strong>
+        </div>
+        <div class="hero-stat__track">
+            <span style="@StatWidth(value)"></span>
+        </div>
+    </div>;
+
+    private bool IsExpanded(HeroProfile hero) => ReferenceEquals(expandedHero, hero);
+
+    private void ToggleHero(HeroProfile hero) =>
+        expandedHero = IsExpanded(hero) ? null : hero;
+
+    private sealed class ApiProblemDetails
+    {
+        public string? Detail { get; init; }
+    }
+}
