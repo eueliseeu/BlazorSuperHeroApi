@@ -45,12 +45,11 @@ Abra `https://localhost:7183`.
 | Método | Endpoint | Descrição |
 | --- | --- | --- |
 | `GET` | `/api/heroes/search?name=batman` | Pesquisa personagens pelo nome |
-| `GET` | `/api/heroes/image?url={url-codificada}` | Busca uma imagem de retrato permitida pelo servidor |
+| `GET` | `/api/heroes/{id}/image` | Redireciona para a imagem do herói no CDN (espelho akabab/superhero-api via jsDelivr) |
+| `GET` | `/api/heroes/image?url={url-codificada}` | (Legado) Busca uma imagem do superherodb.com pelo servidor; pode ser bloqueada pela Cloudflare |
 
 O servidor consulta a SuperHeroAPI no formato `https://superheroapi.com/api/{token}/search/{nome}`.
 
 ## Configuração em produção
 
 Defina `SuperHeroApi__AccessToken` como variável de ambiente no servidor. Não coloque o token em arquivos públicos, no projeto WebAssembly ou no repositório.
-
-O carregamento das imagens depende de o servidor conseguir acessar `www.superherodb.com`. Redes institucionais ou restrições do provedor podem bloquear esse acesso; nesses casos, a aplicação exibe o avatar alternativo.
