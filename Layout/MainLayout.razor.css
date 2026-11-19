@@ -86,14 +86,30 @@
     display: flex;
     width: calc(100% - 48px);
     max-width: 1120px;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    flex-wrap: wrap;
     gap: 1rem;
     margin: 0 auto;
     padding: 1.4rem 0;
     border-top: 1px solid #d8dee4;
     color: #6e7781;
     font-size: 0.77rem;
+}
+
+.site-footer__about,
+.site-footer__credits {
+    display: grid;
+    min-width: 0;
+    gap: 0.35rem;
+}
+
+.site-footer__about {
+    flex: 1 1 250px;
+}
+
+.site-footer__credits {
+    flex: 1 1 300px;
 }
 
 .site-footer a {
