@@ -16,22 +16,6 @@ O projeto apresenta:
 
 ## Arquitetura
 
-```text
-Navegador / Blazor WebAssembly
-            |
-            | HTTP HTTPS para a aplicação hospedada
-            v
-ASP.NET Core Server
-  |                         |
-  | ISuperHeroService       | IHeroImageCatalog
-  v                         v
-SuperHeroAPI             Akabab no GitHub
-                             |
-                             | jsDelivr CDN
-                             v
-                        Imagem final
-```
-
 | Projeto | Responsabilidade |
 | --- | --- |
 | `BlazorSuperHeroApi` | Aplicação Blazor WebAssembly: interface, estado da tela e chamadas à API local. |
